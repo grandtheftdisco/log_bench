@@ -12,7 +12,6 @@ module LogBench
         MIN_FILTER_X_POSITION = 20
         FILTER_X_MARGIN = 3
 
-        # 🌸 step 3
         # Column widths
   METHOD_WIDTH = 8
   PATH_WIDTH = 20
@@ -74,7 +73,6 @@ module LogBench
           end
         end
 
-        # 🌸 step 1
         def draw_column_headers
           log_win.setpos(COLUMN_HEADER_Y, HEADER_Y_OFFSET)
           log_win.attron(color_pair(HEADER_CYAN) | A_DIM) do
@@ -121,7 +119,6 @@ module LogBench
           log_win.attron(A_DIM) { log_win.addstr("No requests found") }
         end
 
-        # 🌸 step 2
         def draw_row(request, request_index, y_position)
           log_win.setpos(y_position, HEADER_Y_OFFSET)
           is_selected = request_index == state.selected
