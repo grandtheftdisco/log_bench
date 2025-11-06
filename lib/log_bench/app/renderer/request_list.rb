@@ -136,13 +136,25 @@ module LogBench
 
           # Draw left group (METHOD, PATH)
           method_text = (request.method || "").ljust(METHOD_WIDTH)
-          log_win.attron(is_selected ? color_pair(10) | A_DIM : color_pair(method_color_for(request.method)) | A_BOLD) { log_win.addstr(method_text) }
+          if is_selected
+            log_win.attron(color_pair(SELECTION_HIGHLIGHT) | A_BOLD) { log_win.addstr(method_text) }
+          else
+            log_win.attron(color_pair(method_color_for(request.method)) | A_BOLD) { log_win.addstr(method_text) }
+          end
 
           path_text = (request.path || "")[0, PATH_WIDTH].ljust(PATH_WIDTH)
-          log_win.addstr(path_text)
+          if is_selected
+            log_win.attron(color_pair(SELECTION_HIGHLIGHT)) { log_win.addstr(path_text) }
+          else
+            log_win.addstr(path_text)
+          end
 
           # Add gap between left and right groups
-          log_win.addstr(" " * GROUP_GAP)
+          if is_selected
+            log_win.attron(color_pair(SELECTION_HIGHLIGHT)) { log_win.addstr(" " * GROUP_GAP) }
+          else
+            log_win.addstr(" " * GROUP_GAP)
+          end
 
           # Calculate right group start so it is flush with the right border
           right_group_width = STATUS_WIDTH + STATUS_GAP + DURATION_WIDTH + DURATION_GAP + TIMESTAMP_WIDTH
@@ -153,12 +165,28 @@ module LogBench
           # Draw right group (STATUS, DURATION, TIMESTAMP)
           status_text = request.status ? request.status.to_s.rjust(3) : ""
           status_text = status_text.ljust(STATUS_WIDTH)
-          log_win.attron(is_selected ? color_pair(10) | A_DIM : color_pair(status_color_for(request.status))) { log_win.addstr(status_text) }
-          log_win.addstr(" " * STATUS_GAP)
+          if is_selected
+            log_win.attron(color_pair(SELECTION_HIGHLIGHT)) { log_win.addstr(status_text) }
+          else
+            log_win.attron(color_pair(status_color_for(request.status))) { log_win.addstr(status_text) }
+          end
+          if is_selected
+            log_win.attron(color_pair(SELECTION_HIGHLIGHT)) { log_win.addstr(" " * STATUS_GAP) }
+          else
+            log_win.addstr(" " * STATUS_GAP)
+          end
 
           duration_text = request.duration ? ("%dms" % request.duration.to_i).ljust(DURATION_WIDTH) : "".ljust(DURATION_WIDTH)
-          log_win.attron(is_selected ? color_pair(10) | A_DIM : A_DIM) { log_win.addstr(duration_text) }
-          log_win.addstr(" " * DURATION_GAP)
+          if is_selected
+            log_win.attron(color_pair(SELECTION_HIGHLIGHT)) { log_win.addstr(duration_text) }
+          else
+            log_win.attron(A_DIM) { log_win.addstr(duration_text) }
+          end
+          if is_selected
+            log_win.attron(color_pair(SELECTION_HIGHLIGHT)) { log_win.addstr(" " * DURATION_GAP) }
+          else
+            log_win.addstr(" " * DURATION_GAP)
+          end
 
           ts = request.respond_to?(:timestamp) ? request.timestamp : nil
           timestamp_text = ""
@@ -174,7 +202,11 @@ module LogBench
           else
             timestamp_text = "".ljust(TIMESTAMP_WIDTH)
           end
-          log_win.attron(is_selected ? color_pair(10) | A_DIM : 0) { log_win.addstr(timestamp_text) }
+          if is_selected
+            log_win.attron(color_pair(SELECTION_HIGHLIGHT)) { log_win.addstr(timestamp_text) }
+          else
+            log_win.addstr(timestamp_text)
+          end
         end
         def draw_timestamp_column(request, is_selected)
           timestamp_col_start = screen.panel_width - TIMESTAMP_WIDTH - 1
