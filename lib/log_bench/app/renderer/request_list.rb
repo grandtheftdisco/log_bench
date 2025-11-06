@@ -12,10 +12,16 @@ module LogBench
         MIN_FILTER_X_POSITION = 20
         FILTER_X_MARGIN = 3
 
+        # 🌸 step 3
         # Column widths
-        METHOD_WIDTH = 8
-        STATUS_WIDTH = 8
-        PATH_MARGIN = 27
+  METHOD_WIDTH = 8
+  PATH_WIDTH = 20
+  STATUS_WIDTH = 8
+  STATUS_GAP = 2
+  DURATION_WIDTH = 10
+  DURATION_GAP = 2
+  TIMESTAMP_WIDTH = 12
+  GROUP_GAP = 4 # Reasonable default gap between left and right column groups
 
         # Color constants
         HEADER_CYAN = 1
@@ -68,13 +74,23 @@ module LogBench
           end
         end
 
+        # 🌸 step 1
         def draw_column_headers
           log_win.setpos(COLUMN_HEADER_Y, HEADER_Y_OFFSET)
           log_win.attron(color_pair(HEADER_CYAN) | A_DIM) do
             log_win.addstr("METHOD".ljust(METHOD_WIDTH))
-            log_win.addstr("PATH".ljust(screen.panel_width - PATH_MARGIN))
+            log_win.addstr("PATH".ljust(PATH_WIDTH))
+
+            # Calculate right group start with a reasonable gap
+            left_group_end = HEADER_Y_OFFSET + METHOD_WIDTH + PATH_WIDTH
+            right_group_width = STATUS_WIDTH + STATUS_GAP + DURATION_WIDTH + DURATION_GAP + TIMESTAMP_WIDTH
+            right_group_start = [left_group_end + GROUP_GAP, screen.panel_width - right_group_width - 2].max
+            log_win.setpos(COLUMN_HEADER_Y, right_group_start)
             log_win.addstr("STATUS".ljust(STATUS_WIDTH))
-            log_win.addstr("TIME")
+            log_win.addstr(" " * STATUS_GAP)
+            log_win.addstr("DURATION".ljust(DURATION_WIDTH))
+            log_win.addstr(" " * DURATION_GAP)
+            log_win.addstr("TIMESTAMP".ljust(TIMESTAMP_WIDTH))
           end
         end
 
@@ -105,21 +121,84 @@ module LogBench
           log_win.attron(A_DIM) { log_win.addstr("No requests found") }
         end
 
+        # 🌸 step 2
         def draw_row(request, request_index, y_position)
-          log_win.setpos(y_position, 1)
+          log_win.setpos(y_position, HEADER_Y_OFFSET)
           is_selected = request_index == state.selected
 
+          # Draw highlight for the entire row, starting at HEADER_Y_OFFSET, stopping before right border
           if is_selected
             log_win.attron(color_pair(10) | A_DIM) do
-              log_win.addstr(" " * (screen.panel_width - 4))
+              log_win.addstr(" " * (log_win.maxx - HEADER_Y_OFFSET - 1))
             end
-            log_win.setpos(y_position, 1)
+            log_win.setpos(y_position, HEADER_Y_OFFSET)
           end
 
-          draw_method_badge(request, is_selected)
-          draw_path_column(request, is_selected)
-          draw_status_column(request, is_selected)
-          draw_duration_column(request, is_selected)
+          # Draw left group (METHOD, PATH)
+          method_text = (request.method || "").ljust(METHOD_WIDTH)
+          log_win.attron(is_selected ? color_pair(10) | A_DIM : color_pair(method_color_for(request.method)) | A_BOLD) { log_win.addstr(method_text) }
+
+          path_text = (request.path || "")[0, PATH_WIDTH].ljust(PATH_WIDTH)
+          log_win.addstr(path_text)
+
+          # Add gap between left and right groups
+          log_win.addstr(" " * GROUP_GAP)
+
+          # Calculate right group start so it is flush with the right border
+          right_group_width = STATUS_WIDTH + STATUS_GAP + DURATION_WIDTH + DURATION_GAP + TIMESTAMP_WIDTH
+          right_group_start = log_win.maxx - right_group_width - 2
+          # Move cursor to right group start
+          log_win.setpos(y_position, right_group_start)
+
+          # Draw right group (STATUS, DURATION, TIMESTAMP)
+          status_text = request.status ? request.status.to_s.rjust(3) : ""
+          status_text = status_text.ljust(STATUS_WIDTH)
+          log_win.attron(is_selected ? color_pair(10) | A_DIM : color_pair(status_color_for(request.status))) { log_win.addstr(status_text) }
+          log_win.addstr(" " * STATUS_GAP)
+
+          duration_text = request.duration ? ("%dms" % request.duration.to_i).ljust(DURATION_WIDTH) : "".ljust(DURATION_WIDTH)
+          log_win.attron(is_selected ? color_pair(10) | A_DIM : A_DIM) { log_win.addstr(duration_text) }
+          log_win.addstr(" " * DURATION_GAP)
+
+          ts = request.respond_to?(:timestamp) ? request.timestamp : nil
+          timestamp_text = ""
+          if ts.is_a?(Time)
+            timestamp_text = ts.strftime("%I:%M.%S %p").ljust(TIMESTAMP_WIDTH)
+          elsif ts.is_a?(String)
+            begin
+              parsed = Time.parse(ts)
+              timestamp_text = parsed.strftime("%I:%M.%S %p").ljust(TIMESTAMP_WIDTH)
+            rescue
+              timestamp_text = ts.ljust(TIMESTAMP_WIDTH)
+            end
+          else
+            timestamp_text = "".ljust(TIMESTAMP_WIDTH)
+          end
+          log_win.attron(is_selected ? color_pair(10) | A_DIM : 0) { log_win.addstr(timestamp_text) }
+        end
+        def draw_timestamp_column(request, is_selected)
+          timestamp_col_start = screen.panel_width - TIMESTAMP_WIDTH - 1
+          ts = request.respond_to?(:timestamp) ? request.timestamp : nil
+          timestamp_text = ""
+          if ts.is_a?(Time)
+            timestamp_text = ts.strftime("%H:%M:%S").ljust(TIMESTAMP_WIDTH - 1)
+          elsif ts.is_a?(String)
+            begin
+              parsed = Time.parse(ts)
+              timestamp_text = parsed.strftime("%H:%M:%S").ljust(TIMESTAMP_WIDTH - 1)
+            rescue
+              timestamp_text = ts.ljust(TIMESTAMP_WIDTH - 1)
+            end
+          else
+            timestamp_text = "".ljust(TIMESTAMP_WIDTH - 1)
+          end
+
+          log_win.setpos(log_win.cury, timestamp_col_start)
+          if is_selected
+            log_win.attron(color_pair(10) | A_DIM) { log_win.addstr(timestamp_text) }
+          else
+            log_win.addstr(timestamp_text)
+          end
         end
 
         def draw_method_badge(request, is_selected)

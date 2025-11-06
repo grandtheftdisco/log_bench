@@ -497,4 +497,11 @@ class TestLogBench < Minitest::Test
     assert_equal :other, request.related_logs[0].type
     assert_equal :other, request.related_logs[1].type
   end
+
+  def test_request_has_timestamp
+    collection = LogBench::Log::Collection.new([TestFixtures.lograge_get_request])
+    request = collection.requests.first
+    refute_nil request.timestamp, "Request should have a timestamp"
+    assert_instance_of Time, request.timestamp, "Timestamp should be a Time object"
+  end
 end
