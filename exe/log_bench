@@ -49,7 +49,10 @@ begin
   unless File.exist?(log_file)
     puts "❌ Log file not found: #{log_file}"
     puts
-    puts "Make sure the log file exists and has content."
+    puts "Make sure:"
+    puts "  1. You're in a Rails application directory"
+    puts "  2. The log file exists and has content"
+    puts "  3. Lograge is configured (see README.md for setup)"
     puts
     puts "For help: log_bench --help"
     exit 1
